@@ -9,6 +9,7 @@ import tempfile
 from textwrap import dedent
 import time
 import traceback
+from typing import Optional
 import uuid
 
 from tqdm import tqdm
@@ -51,7 +52,7 @@ def display_welcome_message():
     input("Press Enter to continue... ")
 
 
-def locate_ck3_directory():
+def locate_ck3_directory() -> Optional[Path]:
     current_path = Path(__file__).resolve()
 
     # Try parent directories successively
@@ -64,9 +65,22 @@ def locate_ck3_directory():
     return None
 
 
-def open_db_connection(ck3_directory):
+def locate_newest_launcher_database(ck3_directory: Path) -> Path:
+    # The beta version of the launcher uses a separate database.
+    # Check which is newest: launcher-v2.sqlite or launcher-v2_openbeta.sqlite
+    stable_db_path = ck3_directory / "launcher-v2.sqlite"
+    beta_db_path = ck3_directory / "launcher-v2_openbeta.sqlite"
+
+    db_to_use = stable_db_path
+    if beta_db_path.exists() and beta_db_path.stat().st_mtime > stable_db_path.stat().st_mtime:
+        db_to_use = beta_db_path
+
+    return db_to_use
+
+
+def open_db_connection(ck3_directory: Path) -> sqlite3.Connection:
     # Connect to the launcher's SQLite database
-    database = str(ck3_directory / "launcher-v2.sqlite")
+    database = str(locate_newest_launcher_database(ck3_directory))
     db_connection = sqlite3.connect(database)
     # Make query results have dict-like interface
     db_connection.row_factory = sqlite3.Row
@@ -138,7 +152,7 @@ def get_game_version(mods):
     return version
 
 
-def get_playset_mods(ck3_directory, playset_id):
+def get_playset_mods(ck3_directory: Path, playset_id):
     db_connection = open_db_connection(ck3_directory)
 
     sql = (
