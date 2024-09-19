@@ -132,6 +132,7 @@ def get_game_version(mods):
     # Find the highest version required by any mod.
     # Provide an arbitrary default if somehow no mods have a suitable requiredVersion
     mod_versions = (mod["requiredVersion"] for mod in mods)
+    mod_versions = [version for version in mod_versions if version]
     version = max(mod_versions, key=sort_key, default="1.12.*")
 
     # Prompt user
